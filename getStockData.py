@@ -28,21 +28,21 @@ import evaluationIndicators as eva
 
 data_path = 'C:/Users/cdoerr1/Desktop/CoronaAi/data/'
 market = ['GSPC', 'DJI', 'Nasdaq', 'MSCIWORLD', 'Lyxor600' ]
-stock_name = ['APA', 'AAL']
+stock_name = ['APA', 'BA']
   
-start_date = date(2018, 1, 15)
+start_date = date(2019, 1, 15)
 end_date = date(2020, 3, 23)
 # end_date = date.today()
 forecast_time = 100
 imp = SimpleImputer(missing_values=np.nan, strategy='mean')
 forcasted_date = end_date + timedelta(days=forecast_time)
 
-apa = ut.readcsv(data_path, stock_name[0])
+apa = ut.readcsv(data_path, stock_name[1])
 start_idx, end_idx, idx_forcasted, stock_dates, number_years = ut.findDate(apa, start_date, end_date, forcasted_date)
-total_return_percentage, annual_return = ut.getStockPerformance(apa, start_idx, end_idx, number_years, rounded=True)
+# total_return_percentage, annual_return = ut.getStockPerformance(apa, start_idx, end_idx, number_years, rounded=True)
 
-apa = ind.calculateWilliamsR(apa)
-eva.evaluateWilliamsR(apa, stock_dates, start_idx, end_idx,  stock_name[0])
+apa = ind.calculateAverageDirectionalIndex(apa)
+eva.evaluateADX(apa, stock_dates, start_idx, end_idx,  stock_name[1])
    
 # fig1 = plt.figure(figsize=(15,12))
 # plt.plot_date(stock_dates[start_idx:end_idx],apa['Adj Close'][start_idx:end_idx], color = 'red', label = 'Close', linestyle = '-', markersize = 0)
