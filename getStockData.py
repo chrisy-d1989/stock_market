@@ -20,61 +20,47 @@ from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 import matplotlib.pyplot as plt
 
-import indicators as ind
+import calculateIndicators as ind
 import utils as ut
-import evaluationIndicators as eva
+import evaluateIndicators as eva
 
-
-
-data_path = 'C:/Users/cdoerr1/Desktop/CoronaAi/data/'
+stock_data_path = 'C:/Users/cdoerr1/Desktop/CoronaAi/data/'
+indicator_path = 'C:/Users/cdoerr1/Desktop/CoronaAi/data/indicators/'
+safe_fig_path = 'C:/Users/cdoerr1/Desktop/CoronaAi/data/figures/'
 market = ['GSPC', 'DJI', 'Nasdaq', 'MSCIWORLD', 'Lyxor600' ]
-stock_name = ['APA', 'BA']
-  
-start_date = date(2019, 1, 15)
-end_date = date(2020, 3, 23)
+stock_name = ['CCL', 'NEE', 'TSM', 'ISRG', 'CGC', 'BEP', 'ASML', 'RDS-B', 'APA', 'DAI']
+start_date = date(2019, 1, 1)
+end_date = date(2020, 4, 9)
 # end_date = date.today()
 forecast_time = 100
 imp = SimpleImputer(missing_values=np.nan, strategy='mean')
 forcasted_date = end_date + timedelta(days=forecast_time)
 
-apa = ut.readcsv(data_path, stock_name[1])
-start_idx, end_idx, idx_forcasted, stock_dates, number_years = ut.findDate(apa, start_date, end_date, forcasted_date)
+
+# apa = ut.loadIndicators(indicator_path, stock_name[1])
+
 # total_return_percentage, annual_return = ut.getStockPerformance(apa, start_idx, end_idx, number_years, rounded=True)
+# real_return = ut.calculateRealReturn(annual_return, start_date, end_date, number_years)
+for stock in stock_name:
+    stock_data = ut.loadStockData(stock_data_path, stock) 
+    start_idx, end_idx, idx_forcasted, stock_dates, number_years = ut.findDate(stock_data, start_date, end_date, forcasted_date)
+    eva.evaluateAllIndicators(stock_data, stock_dates, start_idx, end_idx,  stock, safe_fig_path, True)
 
-apa = ind.calculateAverageDirectionalIndex(apa)
-eva.evaluateADX(apa, stock_dates, start_idx, end_idx,  stock_name[1])
-   
-# fig1 = plt.figure(figsize=(15,12))
-# plt.plot_date(stock_dates[start_idx:end_idx],apa['Adj Close'][start_idx:end_idx], color = 'red', label = 'Close', linestyle = '-', markersize = 0)
-# plt.plot_date(stock_dates[start_idx:end_idx],apa['lower_bound'][start_idx:end_idx], color = 'blue', label = 'BBLow', linestyle = '-', markersize = 0)
-# plt.plot_date(stock_dates[start_idx:end_idx],apa['upper_bound'][start_idx:end_idx], color = 'blue', label = 'BBHigh', linestyle = '-', markersize = 0)
-# plt.title(r'APA Stock Prediction')
-# plt.xlabel('Date')
-# plt.ylabel('$')
-# plt.legend()
+# apa = ind.calculateIndicators(apa)
+# ut.safeIndicators(apa, safe_path, stock_name[1])
+# apa = ind.calculateBollingerBands(apa)
 
-# fig2 = plt.figure(figsize=(15,12))
-# #plt.plot_date(stock_dates[start:end],apa['High'][start:end], label = 'High')
-# #plt.plot_date(stock_dates[start:end],apa['Low'][start:end], label = 'Low')
-# plt.plot_date(stock_dates[end_idx-forecast_time:end_idx],difference_absolute, label = r'absolute', linestyle = '-', markersize = 0)
-# plt.plot_date(stock_dates[end_idx-forecast_time:end_idx],difference_percentage, label = r'%', linestyle = '-', markersize = 0)
-# plt.title(r'APA Stock Prediction')
-# plt.xlabel('Date')
-# plt.ylabel('$')
-# plt.legend()
-# plt.show()
+# apa_normalized = ut.normalizeIndicators(apa)
+# print(apa['Close'].gt(1000).isin([True]))
 
 
-# print(apa.loc[600])
 
 
-# apa = readcsv(data_path, 'APA')
-# aal = readcsv(data_path, 'AAL_dt')
-# start_idx, end_idx, forecast, stock_dates, number_yrs = findDate(apa, start_date, end_date, forcasted_date)
-# # apa.columns = ['date', 'open', 'high', 'low', 'Adj Close', 'Adj Close', 'volume']
-# # apa.insert(0, '', apa.reset_index())
-# print(apa.head(2))
-# print(aal.head(2))
+
+
+
+
+
 # apa.dropna(inplace=True)
 # apa['Prediction'] = apa['Adj Close'].shift(-1)
 
