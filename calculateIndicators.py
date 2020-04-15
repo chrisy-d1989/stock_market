@@ -439,6 +439,7 @@ def calculateDailyReturn(stock):
     label = stock['daily_return'].copy()
     label[stock['daily_return'] < 1] = 0
     label[stock['daily_return'] > 1] = 1
+    stock['weight'] = abs(stock['daily_return'] - 1)
     stock['daily_label'] = label
     return stock 
 

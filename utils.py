@@ -11,17 +11,36 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 from sklearn import preprocessing
 import matplotlib.pyplot as plt
+import calculateIndicators as ind
 
-def loadStockData(stock_data_path, stock):
+
+# def calculateHistoricIndicators(stock_data_path, stock):
+#     #load data
+#     stock = loadStockData(stock_data_path, stock, indicators=False)
+#     #extract start date
+#     start_date = datetime.strptime(stock['Date'].iloc[0], '%Y-%m-%d')
+#     #extract end date 
+#     end_date = datetime.strptime(stock['Date'].iloc[-1], '%Y-%m-%d')
+#     #calculate idxs
+#     idx_start, idx_end, _, _, _ = findDate(stock, start_date, end_date, forcasted_date=0)
+#     #calculate indicators
+#     stock = ind.calculateIndicators(stock)
+#     #safe data
+    
+    
+def loadStockData(stock_data_path, stock, indicators=True):
     """ 
     Input data_path: path to folder that holds stock data
     Input stock: stock symbol
     Return stock_data: pandas series with stock data
     """
-    stock_data = pd.read_csv(stock_data_path +  stock + '.csv')
+    if indicators:
+        stock_data = pd.read_csv('{}{}_indicators.csv'.format(stock_data_path, stock))
+    else:
+        stock_data = pd.read_csv('{}{}.csv'.format(stock_data_path, stock))
     return stock_data
 
-def findDate(stock, start_date, end_date, forcasted_date):
+def findDate(stock, start_date, end_date, forcasted_date=0):
     """ 
     Input data_path: path to folder that holds stock data
     Input stock: stock symbol
@@ -122,30 +141,6 @@ def loadIndicators(indicator_path, stock_name):
     """
     stock_data = pd.read_csv(indicator_path +  stock_name + '_indicators.csv')
     return stock_data
-
-def standardizeIndicators(stock):
-    for key, value in stock.iteritems():
-        if key == 'Date':
-            continue
-        elif (key == 'daily_label'):
-                mean = 0
-                std = 1
-        else:
-            mean = value.mean()
-            std = value.std()
-        stock.loc[:,key] = (stock.loc[:, key] - mean) / std
-    return (stock)
-
-def normalizeIndicators(stock):
-    for key, value in stock.iteritems():
-        if key == 'Date':
-            continue
-        else:
-            x = stock[[key]].values.astype(float)
-            min_max_scaler = preprocessing.MinMaxScaler()
-            x_scaled = min_max_scaler.fit_transform(x)
-            stock[key] = pd.DataFrame(x_scaled)
-    return (stock)
 
 def saveFigure(safe_fig_path, stock_name, indicator):
     plt.savefig(safe_fig_path + stock_name + '_' + indicator + '.png')
