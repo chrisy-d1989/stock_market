@@ -10,6 +10,16 @@ import numpy as np
 from sklearn import preprocessing
 import os
 import tensorflow as tf
+from keras import utils as np_utils
+
+
+
+def trainModel(model, X_train, Y_train, X_test, Y_test, batch_size=32, number_epochs=51, validation_split = 0.2, loss = 'sparse_categorical_crossentropy'):
+    # model.compile(optimizer='adam', loss=loss, metrics=['accuracy'],)
+    model.compile(loss=loss, optimizer='adam', metrics=['categorical_accuracy'])
+    model.fit(X_train, Y_train, epochs=number_epochs, batch_size=batch_size, validation_split = validation_split)
+    # model.evaluate(X_test, Y_test)
+    return model
 
 def splitData(stock, start_idx, end_idx, forcast_idx, ratio= 0.75):
     data_points = end_idx - start_idx
@@ -19,14 +29,35 @@ def splitData(stock, start_idx, end_idx, forcast_idx, ratio= 0.75):
     predict_data = stock.iloc[end_idx:forcast_idx].reset_index()
     return (train_data, test_data, predict_data)
 
-def getXY(stock):
+def getXY(train_data, test_data, predict_data):
     #toDo: use regex filter
-    X = stock.drop(['Date','daily_label'], axis = 1).to_numpy(dtype='float32')
-    Y = stock['daily_label'].to_numpy(dtype='float32')
-    return (X,Y)
+    X_train = train_data.drop(['index', 'Date','daily_label', 'future_close'], axis = 1).to_numpy(dtype='float32')
+    Y_train = train_data['daily_label'].to_numpy(dtype='float32')
+    X_test = test_data.drop(['index', 'Date','daily_label', 'future_close'], axis = 1).to_numpy(dtype='float32')
+    Y_test = test_data['daily_label'].to_numpy(dtype='float32')
+    X_predict = predict_data.drop(['index', 'Date','daily_label', 'future_close'], axis = 1).to_numpy(dtype='float32')
+    Y_predict = predict_data['daily_label'].to_numpy(dtype='float32')
+    return (X_train, Y_train, X_test, Y_test, X_predict, Y_predict)
+
+def prepareDataforLTSM(data, sample_length = 300, Y_data = False):
+    number_samples = int(len(data)/sample_length)
+    if Y_data:
+        features = 1
+    else:
+        features = len(data[0]) 
+    samples = np.zeros((number_samples, sample_length, features))  
+    for j in range(0, number_samples):
+        if Y_data:
+            sample = data[j*sample_length : j*sample_length + sample_length]
+            samples[j, :, 0] = sample
+        else:    
+            sample = data[j*sample_length : j*sample_length + sample_length, :]
+            samples[j, :, :] = sample
+    return samples
 
 def standardizeIndicators(stock):
-    for key, value in stock.iteritems():
+    stock_std = stock.copy()
+    for key, value in stock_std.iteritems():
         if key == 'Date':
             continue
         elif (key == 'daily_label'):
@@ -35,19 +66,20 @@ def standardizeIndicators(stock):
         else:
             mean = value.mean()
             std = value.std()
-        stock.loc[:,key] = (stock.loc[:, key] - mean) / std
-    return (stock)
+        stock_std.loc[:,key] = (stock.loc[:, key] - mean) / std
+    return (stock_std)
 
 def normalizeIndicators(stock):
-    for key, value in stock.iteritems():
+    stock_std = stock.copy()
+    for key, value in stock_std.iteritems():
         if key == 'Date':
             continue
         else:
-            x = stock[[key]].values.astype(float)
+            x = stock_std[[key]].values.astype(float)
             min_max_scaler = preprocessing.MinMaxScaler()
             x_scaled = min_max_scaler.fit_transform(x)
-            stock[key] = pd.DataFrame(x_scaled)
-    return (stock)
+            stock_std[key] = pd.DataFrame(x_scaled)
+    return (stock_std)
 
 def safeModel(model, safe_model_path, number_epochs, batch_size, model_name=None):
     if model_name == None:
@@ -55,7 +87,22 @@ def safeModel(model, safe_model_path, number_epochs, batch_size, model_name=None
     model.save('{}{}_{}_{}.h5'.format(safe_model_path, model_name, number_epochs, batch_size))
     print('safed model to {}{}_{}_{}.h5'.format(safe_model_path, model_name, number_epochs, batch_size))
 
-def loadModel(safe_model_path, model_name, number_epochs, batch_size):
-    print('loading model to {}{}_{}_{}.h5'.format(safe_model_path, model_name, number_epochs, batch_size))
-    return tf.keras.models.load_model('{}{}_{}_{}.h5'.format(safe_model_path, model_name, number_epochs, batch_size))
-    
+def loadModel(safe_model_path, model_name):
+    print('loading model to {}{}.h5'.format(safe_model_path, model_name))
+    return tf.keras.models.load_model('{}{}.h5'.format(safe_model_path, model_name))
+
+def defineCNN(input_shape):
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(64, activation='elu', input_shape=(input_shape,)),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(1024, activation='elu'),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(512, activation='elu'),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(256, activation='elu'),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(128, activation='elu'),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(2, activation='softmax')
+    ])
+    return model

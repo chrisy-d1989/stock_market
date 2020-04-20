@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-modul: 
+modul: trader
 modul author: Christoph Doerr
 
 http://kaushik316-blog.logdown.com/posts/1964522
@@ -36,7 +36,7 @@ stock_name = ['CCL', 'NEE', 'TSM', 'ISRG', 'CGC', 'BEP', 'ASML', 'RDS-B', 'APA',
 start_date = date(2000, 1, 1)
 end_date = date(2019, 4, 9)
 # end_date = date.today()
-forecast_time = 50
+forecast_time = 10
 imp = SimpleImputer(missing_values=np.nan, strategy='mean')
 forcasted_date = end_date + timedelta(days=forecast_time)
 
@@ -51,106 +51,60 @@ forcasted_date = end_date + timedelta(days=forecast_time)
 if os.path.exists('{}{}_indicators.csv'.format(indicator_path, 'APA')):
     apa = utils.loadStockData(indicator_path, 'APA')
 else:
+    apa = utils.loadStockData(stock_data_path, 'APA', indicators=False)
     apa = indicators.calculateIndicators(apa)
     utils.safeIndicators(apa, indicator_path, 'APA')
 
 start_idx, end_idx, forcast_idx, stock_dates, number_years = utils.findDate(apa, start_date, end_date, forcasted_date)
 apa_normalized = model_utils.normalizeIndicators(apa)
 train_data, test_data, predict_data = model_utils.splitData(apa_normalized, start_idx, end_idx, forcast_idx)
-X_train, Y_train = model_utils.getXY(train_data)
-X_test, Y_test = model_utils.getXY(test_data)
-X_predict, Y_predict = model_utils.getXY(predict_data)
+X_train, Y_train, X_test, Y_test, X_predict, Y_predict = model_utils.getXY(train_data, test_data, predict_data)
+# X_train, Y_train, X_test, Y_test, X_predict, Y_predict = model_utils.prepareDataforLTSM()
 
-# k = 3
-# threshold= .5
-# number_epochs = 11
-# batch_size = 32
+X_train = model_utils.prepareDataforLTSM(X_train)
+Y_train = model_utils.prepareDataforLTSM(Y_train, Y_data=True)
+X_test = model_utils.prepareDataforLTSM(X_test)
+Y_test = model_utils.prepareDataforLTSM(Y_test, Y_data=True)
+X_predict = model_utils.prepareDataforLTSM(X_predict, sample_length=len(X_predict))
+Y_predict = model_utils.prepareDataforLTSM(Y_predict,  sample_length=len(X_predict), Y_data=True)
 
-# input_shape = len(X_train[0])
+number_epochs = 15
+batch_size = 1
 # model = tf.keras.Sequential([
-#     tf.keras.layers.Dense(50, activation='elu', input_shape=(input_shape,)),
-#     tf.keras.layers.Dropout(0.5),
-#     tf.keras.layers.Dense(50, activation='elu'),
-#     tf.keras.layers.Dropout(0.5),
-#     tf.keras.layers.Dense(2, activation='softmax')
+#     tf.keras.layers.LSTM(500, input_shape=(X_train.shape[1],X_train.shape[2]), batch_size = batch_size, dropout=0.2, stateful=True, recurrent_dropout=0.1, return_sequences=True),
+#     tf.keras.layers.Dense(2,activation='softmax')
 # ])
 
-# model.compile(
-#   optimizer='adam',
-#   loss='sparse_categorical_crossentropy',
-#   metrics=['accuracy'],
-# )
 
-# model.fit(
-#   X_train, # training data
-#   Y_train, # training targets
-#   epochs=number_epochs,
-#   batch_size=batch_size,
-# )
 
-# model.evaluate(
-#   X_test,
-#   Y_test
-# )
-
+# model = model_utils.trainModel(model, X_train, Y_train, X_test, Y_test, batch_size, number_epochs)
 # model_utils.safeModel(model, safe_model_path, number_epochs, batch_size)
-# model_name = 1
-# model_utils.loadModel(safe_model_path, model_name, number_epochs, batch_size,)
-# #print(model.predict(X_predict))
-# print('DONE')
+model_name = 'lstm4_15_1'
+model = model_utils.loadModel(safe_model_path, model_name)
+predict_model = tf.keras.Sequential([
+    tf.keras.layers.LSTM(500, input_shape=(X_predict.shape[1],X_predict.shape[2]), batch_size = batch_size, dropout=0.2, stateful=True, recurrent_dropout=0.1, return_sequences=True),
+    tf.keras.layers.Dense(2,activation='softmax')
+])
 
-# # apa = ind.calculateIndicators(apa)
-# ut.safeIndicators(apa, safe_path, stock_name[1])
-# apa = ind.calculateBollingerBands(apa)
+# copy weights
+old_weights = model.get_weights()
+predict_model.set_weights(old_weights)
+model_prediction = predict_model.predict(X_predict)
+apa['prediction'] = np.full((len(apa['Adj Close']),1), -1)
+apa.loc[(end_idx+1):forcast_idx, 'prediction'] = model_prediction[0,:,1]
 
-
-
-
-
-
-
-
-
-
-
-# apa.dropna(inplace=True)
-# apa['Prediction'] = apa['Adj Close'].shift(-1)
-
-# start_idx, end_idx, forecast, stock_dates = findDate(apa, start_date, end_date, forcasted_date)
-
-# X = np.array(apa.drop(['Prediction'], 1))
-# X = np.delete(X, 0, 1)
-# Y = np.array(apa['Prediction'])
-# Y = Y[start_idx:end_idx]
-# X = preprocessing.scale(X[start_idx:end_idx])
-# X_prediction = X[-forecast_time:]
-# X_train, X_test, Y_train, Y_test =train_test_split(X[:-forecast_time], Y[:-forecast_time], test_size=0.5)
-# stock_close = np.array(apa['Adj Close'])
-
-# #Further Test Data
-# Z = np.array(apa.drop(['Prediction'], 1))
-# Z = np.delete(Z, 0, 1)
-# Z = preprocessing.scale(Z[end_idx:end_idx + 200])
-
-# if(np.sum(np.isnan(X_train))):
-#     imp.fit(X_train)    
-#     X_train = imp.transform(X_train)
-# if(np.sum(np.isnan(Y_train))):
-#     Y_train = np.where(np.isnan(Y_train), np.ma.array(Y_train, 
-#                mask = np.isnan(Y_train)).mean(axis = 0), Y_train)  
-
-# #Performing the Regression on the training data
-# clf = LinearRegression()
-# clf.fit(X_train, Y_train)
-# prediction = clf.predict(X_prediction)
-# prediction_Z = clf.predict(Z)
-# score = clf.score(X_train, Y_train)
-# print(score)
-
-# # Calculate evaluation values
-# difference_absolute = np.array([])
-# difference_percentage = np.array([])
-# for i in range(forecast_time):
-#     difference_absolute = np.append(difference_absolute, abs(stock_close[end_idx-forecast_time+i] - prediction[i]))
-#     difference_percentage = np.append(difference_percentage, ((stock_close[end_idx-forecast_time+i] - prediction[i])/stock_close[end_idx-forecast_time+i])*100)
-  
+print(model_prediction[0,:,1])
+# fig = plt.figure(figsize=(15,12))   
+# ax0 = plt.subplot2grid((3, 1), (0, 0), rowspan=3)
+# ax0.plot_date(stock_dates[end_idx+1:forcast_idx],apa['Close'][end_idx+1:forcast_idx], color = 'blue', label = 'Close', linestyle ='-', markersize = 0)
+# ax1 = ax0.twinx()
+# ax1.plot_date(stock_dates[end_idx+1:forcast_idx],apa['daily_label'][end_idx+1:forcast_idx], color = 'red', label = 'Label', linestyle ='', marker = 'X')
+# ax1.plot_date(stock_dates[end_idx+1:forcast_idx],apa['prediction'][end_idx+1:forcast_idx], color = 'green', label = 'Model', linestyle ='', marker = '*')
+# ax1.set_title(r'Prediction of Stock Price')
+# ax1.set_xlabel('Date')
+# ax0.set_ylabel('$')
+# plt.grid()
+# lines, labels = ax0.get_legend_handles_labels()
+# lines2, labels2 = ax1.get_legend_handles_labels()
+# ax0.legend(lines + lines2, labels + labels2, loc=1)
+# plt.show()
